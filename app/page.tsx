@@ -258,7 +258,7 @@ export default function Home() {
                 width={IPHONE_WIDTH}
                 height={IPHONE_HEIGHT}
                 className="w-full h-auto max-h-[600px] object-contain"
-                style={{ imageRendering: "high-quality" }}
+                style={{ imageRendering: "auto" }}
               />
             </div>
             {!image && (
