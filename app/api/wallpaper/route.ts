@@ -11,16 +11,26 @@ const USE_BLOB_STORAGE =
 const PLACEHOLDER_SVG =
   '<svg width="1170" height="2532" xmlns="http://www.w3.org/2000/svg"><rect width="1170" height="2532" fill="#f0f0f0"/><text x="585" y="1266" font-family="Arial" font-size="48" fill="#999" text-anchor="middle" dominant-baseline="middle">No wallpaper set</text></svg>';
 
+// Helper to create a fresh ArrayBuffer from any buffer-like data
+function toArrayBuffer(data: Buffer | Uint8Array): ArrayBuffer {
+  const arrayBuffer = new ArrayBuffer(data.length);
+  const view = new Uint8Array(arrayBuffer);
+  for (let i = 0; i < data.length; i++) {
+    view[i] = data[i];
+  }
+  return arrayBuffer;
+}
+
 export async function GET() {
   try {
-    let imageData: Uint8Array;
-
     if (USE_BLOB_STORAGE) {
       // Fetch from Vercel Blob Storage
       try {
         // List blobs to find wallpaper.jpg
         const { blobs } = await list({ prefix: "wallpaper.jpg" });
-        const wallpaperBlob = blobs.find((blob) => blob.pathname === "wallpaper.jpg");
+        const wallpaperBlob = blobs.find(
+          (blob) => blob.pathname === "wallpaper.jpg"
+        );
 
         if (!wallpaperBlob) {
           // If blob doesn't exist, return placeholder
@@ -33,13 +43,23 @@ export async function GET() {
           });
         }
 
-        // Fetch the blob URL
+        // Fetch the blob URL and proxy the response
         const response = await fetch(wallpaperBlob.url);
         if (!response.ok) {
           throw new Error("Failed to fetch blob");
         }
-        const arrayBuffer = await response.arrayBuffer();
-        imageData = new Uint8Array(arrayBuffer);
+
+        // Get the blob from the response and return it
+        const blob = await response.blob();
+        return new NextResponse(blob, {
+          status: 200,
+          headers: {
+            "Content-Type": "image/jpeg",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        });
       } catch (error) {
         console.error("Error fetching from blob storage:", error);
         // If blob doesn't exist or error, return placeholder
@@ -67,22 +87,23 @@ export async function GET() {
         });
       }
 
-      // Read the wallpaper file and convert to Uint8Array
+      // Read the wallpaper file
       const fileBuffer = await readFile(wallpaperPath);
-      imageData = Uint8Array.from(fileBuffer);
-    }
 
-    // Return the image with appropriate headers
-    const imageBlob = new Blob([imageData], { type: "image/jpeg" });
-    return new NextResponse(imageBlob, {
-      status: 200,
-      headers: {
-        "Content-Type": "image/jpeg",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        Pragma: "no-cache",
-        Expires: "0",
-      },
-    });
+      // Create a fresh ArrayBuffer to avoid type issues
+      const arrayBuffer = toArrayBuffer(fileBuffer);
+
+      // Return the image with appropriate headers
+      return new NextResponse(arrayBuffer, {
+        status: 200,
+        headers: {
+          "Content-Type": "image/jpeg",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      });
+    }
   } catch (error) {
     console.error("Error serving wallpaper:", error);
     return NextResponse.json(
@@ -91,4 +112,3 @@ export async function GET() {
     );
   }
 }
-
