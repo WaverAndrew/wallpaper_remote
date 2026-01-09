@@ -62,17 +62,48 @@ Uploads and processes a new wallpaper.
 
 ## Deployment to Vercel
 
-1. Push your code to GitHub
-2. Import the project in Vercel
-3. Set up Vercel Blob Storage:
-   - Go to your Vercel project settings
-   - Navigate to "Storage" → "Blob"
-   - Create a new Blob store (or use existing)
-   - Copy the `BLOB_READ_WRITE_TOKEN` from the store settings
-   - Add it as an environment variable in your Vercel project
-4. Deploy!
+### Step 1: Push to GitHub
 
-**Note:** The app automatically uses Vercel Blob Storage in production (when `BLOB_READ_WRITE_TOKEN` is set or when running on Vercel). For local development, it uses the file system.
+1. Push your code to a GitHub repository
+
+### Step 2: Import to Vercel
+
+1. Go to [vercel.com](https://vercel.com) and sign in
+2. Click "Add New..." → "Project"
+3. Import your GitHub repository
+4. Click "Deploy" (don't worry about configuration yet)
+
+### Step 3: Set up Vercel Blob Storage
+
+1. In your Vercel dashboard, go to your project
+2. Click on the **"Storage"** tab (in the top navigation)
+3. Click **"Create Database"** or **"Add Storage"**
+4. Select **"Blob"** from the options
+5. Give it a name (e.g., "wallpaper-storage") and click **"Create"**
+6. Once created, click on the Blob store
+7. Go to the **"Settings"** tab
+8. Find **"Environment Variables"** section
+9. Copy the **`BLOB_READ_WRITE_TOKEN`** value
+
+### Step 4: Add Environment Variable
+
+1. Go back to your project's main page in Vercel
+2. Click on **"Settings"** tab
+3. Click on **"Environment Variables"** in the sidebar
+4. Add a new environment variable:
+   - **Name:** `BLOB_READ_WRITE_TOKEN`
+   - **Value:** (paste the token you copied)
+   - **Environment:** Select all (Production, Preview, Development)
+5. Click **"Save"**
+
+### Step 5: Redeploy
+
+1. Go to the **"Deployments"** tab
+2. Click the three dots (⋯) on your latest deployment
+3. Click **"Redeploy"**
+4. Or push a new commit to trigger a new deployment
+
+**Note:** The app automatically uses Vercel Blob Storage in production (when `BLOB_READ_WRITE_TOKEN` is set). For local development, it uses the file system, so you don't need the token locally.
 
 ## Apple Shortcut Setup
 
