@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from "react";
 
 export default function Home() {
   const [image, setImage] = useState<string | null>(null);
-  const [text, setText] = useState('');
-  const [textColor, setTextColor] = useState('#FFFFFF');
+  const [text, setText] = useState("");
+  const [textColor, setTextColor] = useState("#FFFFFF");
   const [textSize, setTextSize] = useState(48);
   const [textX, setTextX] = useState(50);
   const [textY, setTextY] = useState(50);
@@ -34,7 +34,7 @@ export default function Home() {
     if (!canvasRef.current || !image) return;
 
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const img = new Image();
@@ -49,9 +49,13 @@ export default function Home() {
       if (text) {
         ctx.fillStyle = textColor;
         ctx.font = `bold ${textSize}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(text, (textX / 100) * IPHONE_WIDTH, (textY / 100) * IPHONE_HEIGHT);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(
+          text,
+          (textX / 100) * IPHONE_WIDTH,
+          (textY / 100) * IPHONE_HEIGHT
+        );
       }
     };
     img.src = image;
@@ -65,36 +69,42 @@ export default function Home() {
 
     try {
       // Convert canvas to blob
-      canvasRef.current.toBlob(async (blob) => {
-        if (!blob) {
-          setUploadStatus('Error: Could not create image');
+      canvasRef.current.toBlob(
+        async (blob) => {
+          if (!blob) {
+            setUploadStatus("Error: Could not create image");
+            setIsUploading(false);
+            return;
+          }
+
+          const formData = new FormData();
+          formData.append("image", blob, "wallpaper.jpg");
+          formData.append("text", text);
+          formData.append("textColor", textColor);
+          formData.append("textSize", textSize.toString());
+          formData.append("textX", textX.toString());
+          formData.append("textY", textY.toString());
+
+          const response = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (response.ok) {
+            setUploadStatus("✅ Wallpaper uploaded successfully!");
+          } else {
+            const error = await response.text();
+            setUploadStatus(`❌ Error: ${error}`);
+          }
           setIsUploading(false);
-          return;
-        }
-
-        const formData = new FormData();
-        formData.append('image', blob, 'wallpaper.jpg');
-        formData.append('text', text);
-        formData.append('textColor', textColor);
-        formData.append('textSize', textSize.toString());
-        formData.append('textX', textX.toString());
-        formData.append('textY', textY.toString());
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (response.ok) {
-          setUploadStatus('✅ Wallpaper uploaded successfully!');
-        } else {
-          const error = await response.text();
-          setUploadStatus(`❌ Error: ${error}`);
-        }
-        setIsUploading(false);
-      }, 'image/jpeg', 0.95);
+        },
+        "image/jpeg",
+        0.95
+      );
     } catch (error) {
-      setUploadStatus(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setUploadStatus(
+        `❌ Error: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
       setIsUploading(false);
     }
   };
@@ -102,9 +112,10 @@ export default function Home() {
   // Redraw when image or text properties change
   useEffect(() => {
     if (image) {
-      setTimeout(drawPreview, 100);
+      const timeoutId = setTimeout(drawPreview, 100);
+      return () => clearTimeout(timeoutId);
     }
-  }, [drawPreview]);
+  }, [drawPreview, image]);
 
   return (
     <main className="min-h-screen p-8">
@@ -130,8 +141,10 @@ export default function Home() {
             {image && (
               <>
                 <div className="bg-white p-6 rounded-lg shadow-md">
-                  <h2 className="text-xl font-semibold mb-4">Text Customization</h2>
-                  
+                  <h2 className="text-xl font-semibold mb-4">
+                    Text Customization
+                  </h2>
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -218,10 +231,16 @@ export default function Home() {
                     disabled={isUploading}
                     className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                   >
-                    {isUploading ? 'Uploading...' : 'Upload Wallpaper'}
+                    {isUploading ? "Uploading..." : "Upload Wallpaper"}
                   </button>
                   {uploadStatus && (
-                    <p className={`mt-4 text-center ${uploadStatus.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
+                    <p
+                      className={`mt-4 text-center ${
+                        uploadStatus.includes("✅")
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
                       {uploadStatus}
                     </p>
                   )}
@@ -239,7 +258,7 @@ export default function Home() {
                 width={IPHONE_WIDTH}
                 height={IPHONE_HEIGHT}
                 className="w-full h-auto max-h-[600px] object-contain"
-                style={{ imageRendering: 'high-quality' }}
+                style={{ imageRendering: "high-quality" }}
               />
             </div>
             {!image && (
@@ -253,11 +272,13 @@ export default function Home() {
         <div className="mt-8 bg-blue-50 p-6 rounded-lg">
           <h3 className="font-semibold text-blue-900 mb-2">API Endpoint</h3>
           <p className="text-sm text-blue-800">
-            Your wallpaper will be available at: <code className="bg-blue-100 px-2 py-1 rounded">/api/wallpaper</code>
+            Your wallpaper will be available at:{" "}
+            <code className="bg-blue-100 px-2 py-1 rounded">
+              /api/wallpaper
+            </code>
           </p>
         </div>
       </div>
     </main>
   );
 }
-
