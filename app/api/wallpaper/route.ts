@@ -13,7 +13,7 @@ const PLACEHOLDER_SVG =
 
 export async function GET() {
   try {
-    let imageBuffer: Buffer;
+    let imageData: Uint8Array;
 
     if (USE_BLOB_STORAGE) {
       // Fetch from Vercel Blob Storage
@@ -39,7 +39,7 @@ export async function GET() {
           throw new Error("Failed to fetch blob");
         }
         const arrayBuffer = await response.arrayBuffer();
-        imageBuffer = Buffer.from(arrayBuffer);
+        imageData = new Uint8Array(arrayBuffer);
       } catch (error) {
         console.error("Error fetching from blob storage:", error);
         // If blob doesn't exist or error, return placeholder
@@ -67,12 +67,13 @@ export async function GET() {
         });
       }
 
-      // Read the wallpaper file
-      imageBuffer = await readFile(wallpaperPath);
+      // Read the wallpaper file and convert to Uint8Array
+      const fileBuffer = await readFile(wallpaperPath);
+      imageData = Uint8Array.from(fileBuffer);
     }
 
     // Return the image with appropriate headers
-    return new NextResponse(imageBuffer, {
+    return new NextResponse(imageData, {
       status: 200,
       headers: {
         "Content-Type": "image/jpeg",
