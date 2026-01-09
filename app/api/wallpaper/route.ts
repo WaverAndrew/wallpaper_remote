@@ -73,7 +73,8 @@ export async function GET() {
     }
 
     // Return the image with appropriate headers
-    return new NextResponse(imageData, {
+    const imageBlob = new Blob([imageData], { type: "image/jpeg" });
+    return new NextResponse(imageBlob, {
       status: 200,
       headers: {
         "Content-Type": "image/jpeg",
