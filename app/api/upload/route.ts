@@ -72,12 +72,8 @@ export async function POST(request: NextRequest) {
 
     if (USE_BLOB_STORAGE) {
       // Use Vercel Blob Storage for production
-      // Convert Buffer to ArrayBuffer for Vercel Blob Storage
-      const arrayBuffer = processedImage.buffer.slice(
-        processedImage.byteOffset,
-        processedImage.byteOffset + processedImage.byteLength
-      );
-      const blob = await put("wallpaper.jpg", arrayBuffer, {
+      // Vercel Blob accepts Buffer directly
+      const blob = await put("wallpaper.jpg", processedImage, {
         access: "public",
         contentType: "image/jpeg",
       });
