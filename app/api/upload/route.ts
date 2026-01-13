@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import sharp from "sharp";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
-import { put } from "@vercel/blob";
+import { put, list, del } from "@vercel/blob";
+
+// iPhone 16 resolution
+const IPHONE_WIDTH = 1170;
+const IPHONE_HEIGHT = 2532;
 
 // Use Vercel Blob Storage in production, file system in development
 const USE_BLOB_STORAGE =
@@ -12,6 +17,11 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const imageFile = formData.get("image") as File;
+    const text = (formData.get("text") as string) || "";
+    const textColor = (formData.get("textColor") as string) || "#FFFFFF";
+    const textSize = parseInt((formData.get("textSize") as string) || "48");
+    const textX = parseFloat((formData.get("textX") as string) || "50");
+    const textY = parseFloat((formData.get("textY") as string) || "50");
 
     if (!imageFile) {
       return NextResponse.json(
@@ -20,21 +30,77 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // The image from the canvas already has text rendered on it
-    // and is already at the correct resolution, so we just save it directly
+    // Convert File to Buffer
     const arrayBuffer = await imageFile.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Process image with Sharp
+    let image = sharp(buffer).resize(IPHONE_WIDTH, IPHONE_HEIGHT, {
+      fit: "cover",
+      position: "center",
+    });
+
+    // If text is provided, add text overlay using SVG
+    if (text) {
+      const svgText = `
+        <svg width="${IPHONE_WIDTH}" height="${IPHONE_HEIGHT}">
+          <text
+            x="${(textX / 100) * IPHONE_WIDTH}"
+            y="${(textY / 100) * IPHONE_HEIGHT}"
+            font-family="Arial, sans-serif"
+            font-size="${textSize}"
+            font-weight="bold"
+            fill="${textColor}"
+            text-anchor="middle"
+            dominant-baseline="middle"
+          >${text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</text>
+        </svg>
+      `;
+
+      const svgBuffer = Buffer.from(svgText);
+      image = image.composite([
+        {
+          input: svgBuffer,
+          top: 0,
+          left: 0,
+        },
+      ]);
+    }
+
+    // Convert to JPEG
+    const processedImage = await image.jpeg({ quality: 95 }).toBuffer();
 
     if (USE_BLOB_STORAGE) {
       // Use Vercel Blob Storage for production
+      
+      // Delete all existing blobs before uploading new ones
+      try {
+        const { blobs } = await list();
+        if (blobs.length > 0) {
+          const urlsToDelete = blobs.map((b: { url: string }) => b.url);
+          await del(urlsToDelete);
+          console.log(`Deleted ${urlsToDelete.length} existing blob(s)`);
+        }
+      } catch (deleteError) {
+        console.error("Error deleting existing blobs:", deleteError);
+        // Continue with upload even if deletion fails
+      }
+      
+      // Convert Buffer to a fresh Uint8Array (copies data, avoids SharedArrayBuffer issues)
+      const uint8Array = Uint8Array.from(processedImage);
       const imageBlob = new Blob([uint8Array], { type: "image/jpeg" });
       const blob = await put("wallpaper.jpg", imageBlob, {
         access: "public",
         contentType: "image/jpeg",
       });
 
-      // Store metadata
+      // Store metadata in blob as well
       const metadata = {
+        text,
+        textColor,
+        textSize,
+        textX,
+        textY,
         updatedAt: new Date().toISOString(),
         imageUrl: blob.url,
       };
@@ -55,10 +121,15 @@ export async function POST(request: NextRequest) {
       }
 
       // Save the image
-      await writeFile(wallpaperPath, uint8Array);
+      await writeFile(wallpaperPath, processedImage);
 
       // Save metadata
       const metadata = {
+        text,
+        textColor,
+        textSize,
+        textX,
+        textY,
         updatedAt: new Date().toISOString(),
       };
       await writeFile(metadataPath, JSON.stringify(metadata, null, 2));
@@ -80,3 +151,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
