@@ -65,7 +65,8 @@ export async function GET() {
     }
 
     // Return the image with appropriate headers
-    return new NextResponse(imageBuffer, {
+    // Convert Buffer to Uint8Array for NextResponse compatibility
+    return new NextResponse(new Uint8Array(imageBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'image/jpeg',
