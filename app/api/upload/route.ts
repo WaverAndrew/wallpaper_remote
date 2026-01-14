@@ -5,9 +5,11 @@ import { join } from "path";
 import { existsSync } from "fs";
 import { put, list, del } from "@vercel/blob";
 
-// iPhone 16 resolution
-const IPHONE_WIDTH = 1170;
-const IPHONE_HEIGHT = 2532;
+// Device configurations
+const DEVICES: Record<string, { width: number; height: number }> = {
+  "iphone-16": { width: 1170, height: 2532 },
+  "iphone-17-pro": { width: 1320, height: 2868 },
+};
 
 // Use Vercel Blob Storage in production, file system in development
 const USE_BLOB_STORAGE =
@@ -22,6 +24,7 @@ export async function POST(request: NextRequest) {
     const textSize = parseInt((formData.get("textSize") as string) || "48");
     const textX = parseFloat((formData.get("textX") as string) || "50");
     const textY = parseFloat((formData.get("textY") as string) || "50");
+    const device = (formData.get("device") as string) || "iphone-16";
 
     if (!imageFile) {
       return NextResponse.json(
@@ -30,12 +33,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get device dimensions
+    const deviceConfig = DEVICES[device] || DEVICES["iphone-16"];
+    const { width: deviceWidth, height: deviceHeight } = deviceConfig;
+
     // Convert File to Buffer
     const arrayBuffer = await imageFile.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Process image with Sharp
-    let image = sharp(buffer).resize(IPHONE_WIDTH, IPHONE_HEIGHT, {
+    // Process image with Sharp - the image is already cropped from the frontend
+    // so we just need to ensure it's the right size
+    let image = sharp(buffer).resize(deviceWidth, deviceHeight, {
       fit: "cover",
       position: "center",
     });
@@ -43,10 +51,10 @@ export async function POST(request: NextRequest) {
     // If text is provided, add text overlay using SVG
     if (text) {
       const svgText = `
-        <svg width="${IPHONE_WIDTH}" height="${IPHONE_HEIGHT}">
+        <svg width="${deviceWidth}" height="${deviceHeight}">
           <text
-            x="${(textX / 100) * IPHONE_WIDTH}"
-            y="${(textY / 100) * IPHONE_HEIGHT}"
+            x="${(textX / 100) * deviceWidth}"
+            y="${(textY / 100) * deviceHeight}"
             font-family="Arial, sans-serif"
             font-size="${textSize}"
             font-weight="bold"
@@ -101,6 +109,9 @@ export async function POST(request: NextRequest) {
         textSize,
         textX,
         textY,
+        device,
+        deviceWidth,
+        deviceHeight,
         updatedAt: new Date().toISOString(),
         imageUrl: blob.url,
       };
@@ -130,6 +141,9 @@ export async function POST(request: NextRequest) {
         textSize,
         textX,
         textY,
+        device,
+        deviceWidth,
+        deviceHeight,
         updatedAt: new Date().toISOString(),
       };
       await writeFile(metadataPath, JSON.stringify(metadata, null, 2));

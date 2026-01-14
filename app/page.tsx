@@ -2,8 +2,25 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 
+// Device configurations
+const DEVICES = {
+  "iphone-16": {
+    name: "iPhone 16",
+    width: 1170,
+    height: 2532,
+  },
+  "iphone-17-pro": {
+    name: "iPhone 17 Pro",
+    width: 1320,
+    height: 2868,
+  },
+} as const;
+
+type DeviceKey = keyof typeof DEVICES;
+
 export default function Home() {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [selectedDevice, setSelectedDevice] = useState<DeviceKey>("iphone-16");
   const [text, setText] = useState("");
   const [textColor, setTextColor] = useState("#FFFFFF");
   const [textSize, setTextSize] = useState(48);
@@ -23,10 +40,9 @@ export default function Home() {
   const [imageScale, setImageScale] = useState(1);
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
 
-  // iPhone 16 resolution: 1170 x 2532
-  const IPHONE_WIDTH = 1170;
-  const IPHONE_HEIGHT = 2532;
-  const ASPECT_RATIO = IPHONE_WIDTH / IPHONE_HEIGHT;
+  // Get current device dimensions
+  const deviceWidth = DEVICES[selectedDevice].width;
+  const deviceHeight = DEVICES[selectedDevice].height;
 
   // Load current wallpaper on mount
   useEffect(() => {
@@ -52,6 +68,23 @@ export default function Home() {
     loadCurrentWallpaper();
   }, []);
 
+  // Recalculate scale and offset when device changes
+  useEffect(() => {
+    if (originalImage && naturalSize.width > 0) {
+      const scaleX = deviceWidth / naturalSize.width;
+      const scaleY = deviceHeight / naturalSize.height;
+      const scale = Math.max(scaleX, scaleY);
+      setImageScale(scale);
+      
+      const scaledWidth = naturalSize.width * scale;
+      const scaledHeight = naturalSize.height * scale;
+      setImageOffset({
+        x: (deviceWidth - scaledWidth) / 2,
+        y: (deviceHeight - scaledHeight) / 2,
+      });
+    }
+  }, [selectedDevice, deviceWidth, deviceHeight, naturalSize, originalImage]);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -62,8 +95,8 @@ export default function Home() {
           setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
           
           // Calculate initial scale to cover the crop area
-          const scaleX = IPHONE_WIDTH / img.naturalWidth;
-          const scaleY = IPHONE_HEIGHT / img.naturalHeight;
+          const scaleX = deviceWidth / img.naturalWidth;
+          const scaleY = deviceHeight / img.naturalHeight;
           const scale = Math.max(scaleX, scaleY);
           setImageScale(scale);
           
@@ -71,8 +104,8 @@ export default function Home() {
           const scaledWidth = img.naturalWidth * scale;
           const scaledHeight = img.naturalHeight * scale;
           setImageOffset({
-            x: (IPHONE_WIDTH - scaledWidth) / 2,
-            y: (IPHONE_HEIGHT - scaledHeight) / 2,
+            x: (deviceWidth - scaledWidth) / 2,
+            y: (deviceHeight - scaledHeight) / 2,
           });
         };
         img.src = event.target?.result as string;
@@ -92,7 +125,7 @@ export default function Home() {
     const img = new Image();
     img.onload = () => {
       // Clear canvas
-      ctx.clearRect(0, 0, IPHONE_WIDTH, IPHONE_HEIGHT);
+      ctx.clearRect(0, 0, deviceWidth, deviceHeight);
 
       // Draw image with current offset and scale
       const scaledWidth = img.naturalWidth * imageScale;
@@ -114,13 +147,13 @@ export default function Home() {
         ctx.textBaseline = "middle";
         ctx.fillText(
           text,
-          (textX / 100) * IPHONE_WIDTH,
-          (textY / 100) * IPHONE_HEIGHT
+          (textX / 100) * deviceWidth,
+          (textY / 100) * deviceHeight
         );
       }
     };
     img.src = originalImage;
-  }, [originalImage, text, textColor, textSize, textX, textY, imageOffset, imageScale]);
+  }, [originalImage, text, textColor, textSize, textX, textY, imageOffset, imageScale, deviceWidth, deviceHeight]);
 
   // Mouse/touch handlers for dragging
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -129,8 +162,8 @@ export default function Home() {
     const rect = cropContainerRef.current?.getBoundingClientRect();
     if (rect) {
       // Scale pointer position to canvas coordinates
-      const scaleFactorX = IPHONE_WIDTH / rect.width;
-      const scaleFactorY = IPHONE_HEIGHT / rect.height;
+      const scaleFactorX = deviceWidth / rect.width;
+      const scaleFactorY = deviceHeight / rect.height;
       setDragStart({
         x: e.clientX * scaleFactorX - imageOffset.x,
         y: e.clientY * scaleFactorY - imageOffset.y,
@@ -143,8 +176,8 @@ export default function Home() {
     if (!isDragging || !originalImage) return;
     const rect = cropContainerRef.current?.getBoundingClientRect();
     if (rect) {
-      const scaleFactorX = IPHONE_WIDTH / rect.width;
-      const scaleFactorY = IPHONE_HEIGHT / rect.height;
+      const scaleFactorX = deviceWidth / rect.width;
+      const scaleFactorY = deviceHeight / rect.height;
       
       const scaledWidth = naturalSize.width * imageScale;
       const scaledHeight = naturalSize.height * imageScale;
@@ -155,9 +188,9 @@ export default function Home() {
       
       // Constrain to keep image covering the frame
       const maxX = 0;
-      const minX = IPHONE_WIDTH - scaledWidth;
+      const minX = deviceWidth - scaledWidth;
       const maxY = 0;
-      const minY = IPHONE_HEIGHT - scaledHeight;
+      const minY = deviceHeight - scaledHeight;
       
       newX = Math.min(maxX, Math.max(minX, newX));
       newY = Math.min(maxY, Math.max(minY, newY));
@@ -173,7 +206,7 @@ export default function Home() {
   const handleZoom = (delta: number) => {
     const newScale = Math.max(
       // Minimum scale to cover the frame
-      Math.max(IPHONE_WIDTH / naturalSize.width, IPHONE_HEIGHT / naturalSize.height),
+      Math.max(deviceWidth / naturalSize.width, deviceHeight / naturalSize.height),
       imageScale + delta
     );
     
@@ -185,8 +218,8 @@ export default function Home() {
     // Constrain offsets
     const scaledWidth = naturalSize.width * newScale;
     const scaledHeight = naturalSize.height * newScale;
-    const constrainedX = Math.min(0, Math.max(IPHONE_WIDTH - scaledWidth, newOffsetX));
-    const constrainedY = Math.min(0, Math.max(IPHONE_HEIGHT - scaledHeight, newOffsetY));
+    const constrainedX = Math.min(0, Math.max(deviceWidth - scaledWidth, newOffsetX));
+    const constrainedY = Math.min(0, Math.max(deviceHeight - scaledHeight, newOffsetY));
     
     setImageScale(newScale);
     setImageOffset({ x: constrainedX, y: constrainedY });
@@ -215,6 +248,7 @@ export default function Home() {
           formData.append("textSize", textSize.toString());
           formData.append("textX", textX.toString());
           formData.append("textY", textY.toString());
+          formData.append("device", selectedDevice);
 
           const response = await fetch("/api/upload", {
             method: "POST",
@@ -267,6 +301,29 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left side: Controls */}
           <div className="space-y-6">
+            {/* Device Selector */}
+            <div className="bg-white/10 backdrop-blur-sm p-6 rounded-lg border border-white/20">
+              <h2 className="text-xl font-semibold mb-4 text-white">Device</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {(Object.keys(DEVICES) as DeviceKey[]).map((key) => (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedDevice(key)}
+                    className={`px-4 py-3 rounded-lg font-medium transition-all ${
+                      selectedDevice === key
+                        ? "bg-purple-600 text-white ring-2 ring-purple-400"
+                        : "bg-white/10 text-gray-300 hover:bg-white/20"
+                    }`}
+                  >
+                    <div className="text-sm font-semibold">{DEVICES[key].name}</div>
+                    <div className="text-xs opacity-70">
+                      {DEVICES[key].width} × {DEVICES[key].height}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="bg-white/10 backdrop-blur-sm p-6 rounded-lg border border-white/20">
               <h2 className="text-xl font-semibold mb-4 text-white">Upload Photo</h2>
               <input
@@ -406,12 +463,15 @@ export default function Home() {
 
           {/* Right side: Preview */}
           <div className="bg-white/10 backdrop-blur-sm p-6 rounded-lg border border-white/20">
-            <h2 className="text-xl font-semibold mb-4 text-white">Preview (iPhone 16)</h2>
+            <h2 className="text-xl font-semibold mb-4 text-white">
+              Preview ({DEVICES[selectedDevice].name})
+            </h2>
             <div 
               ref={cropContainerRef}
-              className="border-4 border-gray-600 rounded-[2rem] overflow-hidden bg-black relative"
+              className="border-4 border-gray-600 rounded-[2rem] overflow-hidden bg-black relative mx-auto"
               style={{ 
-                aspectRatio: `${IPHONE_WIDTH} / ${IPHONE_HEIGHT}`,
+                aspectRatio: `${deviceWidth} / ${deviceHeight}`,
+                maxHeight: "600px",
                 cursor: originalImage ? (isDragging ? "grabbing" : "grab") : "default",
                 touchAction: "none",
               }}
@@ -422,8 +482,8 @@ export default function Home() {
             >
               <canvas
                 ref={canvasRef}
-                width={IPHONE_WIDTH}
-                height={IPHONE_HEIGHT}
+                width={deviceWidth}
+                height={deviceHeight}
                 className="w-full h-full object-contain"
                 style={{ imageRendering: "auto" }}
               />
