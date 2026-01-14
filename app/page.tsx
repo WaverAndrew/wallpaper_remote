@@ -75,7 +75,7 @@ export default function Home() {
       const scaleY = deviceHeight / naturalSize.height;
       const scale = Math.max(scaleX, scaleY);
       setImageScale(scale);
-      
+
       const scaledWidth = naturalSize.width * scale;
       const scaledHeight = naturalSize.height * scale;
       setImageOffset({
@@ -92,14 +92,17 @@ export default function Home() {
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
-          setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-          
+          setNaturalSize({
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+          });
+
           // Calculate initial scale to cover the crop area
           const scaleX = deviceWidth / img.naturalWidth;
           const scaleY = deviceHeight / img.naturalHeight;
           const scale = Math.max(scaleX, scaleY);
           setImageScale(scale);
-          
+
           // Center the image
           const scaledWidth = img.naturalWidth * scale;
           const scaledHeight = img.naturalHeight * scale;
@@ -130,7 +133,7 @@ export default function Home() {
       // Draw image with current offset and scale
       const scaledWidth = img.naturalWidth * imageScale;
       const scaledHeight = img.naturalHeight * imageScale;
-      
+
       ctx.drawImage(
         img,
         imageOffset.x,
@@ -153,7 +156,18 @@ export default function Home() {
       }
     };
     img.src = originalImage;
-  }, [originalImage, text, textColor, textSize, textX, textY, imageOffset, imageScale, deviceWidth, deviceHeight]);
+  }, [
+    originalImage,
+    text,
+    textColor,
+    textSize,
+    textX,
+    textY,
+    imageOffset,
+    imageScale,
+    deviceWidth,
+    deviceHeight,
+  ]);
 
   // Mouse/touch handlers for dragging
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -178,23 +192,23 @@ export default function Home() {
     if (rect) {
       const scaleFactorX = deviceWidth / rect.width;
       const scaleFactorY = deviceHeight / rect.height;
-      
+
       const scaledWidth = naturalSize.width * imageScale;
       const scaledHeight = naturalSize.height * imageScale;
-      
+
       // Calculate new offset
       let newX = e.clientX * scaleFactorX - dragStart.x;
       let newY = e.clientY * scaleFactorY - dragStart.y;
-      
+
       // Constrain to keep image covering the frame
       const maxX = 0;
       const minX = deviceWidth - scaledWidth;
       const maxY = 0;
       const minY = deviceHeight - scaledHeight;
-      
+
       newX = Math.min(maxX, Math.max(minX, newX));
       newY = Math.min(maxY, Math.max(minY, newY));
-      
+
       setImageOffset({ x: newX, y: newY });
     }
   };
@@ -206,21 +220,30 @@ export default function Home() {
   const handleZoom = (delta: number) => {
     const newScale = Math.max(
       // Minimum scale to cover the frame
-      Math.max(deviceWidth / naturalSize.width, deviceHeight / naturalSize.height),
+      Math.max(
+        deviceWidth / naturalSize.width,
+        deviceHeight / naturalSize.height
+      ),
       imageScale + delta
     );
-    
+
     // Adjust offset to zoom towards center
     const scaleDiff = newScale - imageScale;
     const newOffsetX = imageOffset.x - (naturalSize.width * scaleDiff) / 2;
     const newOffsetY = imageOffset.y - (naturalSize.height * scaleDiff) / 2;
-    
+
     // Constrain offsets
     const scaledWidth = naturalSize.width * newScale;
     const scaledHeight = naturalSize.height * newScale;
-    const constrainedX = Math.min(0, Math.max(deviceWidth - scaledWidth, newOffsetX));
-    const constrainedY = Math.min(0, Math.max(deviceHeight - scaledHeight, newOffsetY));
-    
+    const constrainedX = Math.min(
+      0,
+      Math.max(deviceWidth - scaledWidth, newOffsetX)
+    );
+    const constrainedY = Math.min(
+      0,
+      Math.max(deviceHeight - scaledHeight, newOffsetY)
+    );
+
     setImageScale(newScale);
     setImageOffset({ x: constrainedX, y: constrainedY });
   };
@@ -256,11 +279,13 @@ export default function Home() {
           });
 
           const data = await response.json();
-          
+
           if (response.ok) {
             setUploadStatus("✅ Wallpaper uploaded successfully!");
           } else {
-            setUploadStatus(`❌ Error: ${data.error || data.details || "Upload failed"}`);
+            setUploadStatus(
+              `❌ Error: ${data.error || data.details || "Upload failed"}`
+            );
           }
           setIsUploading(false);
         },
@@ -315,7 +340,9 @@ export default function Home() {
                         : "bg-white/10 text-gray-300 hover:bg-white/20"
                     }`}
                   >
-                    <div className="text-sm font-semibold">{DEVICES[key].name}</div>
+                    <div className="text-sm font-semibold">
+                      {DEVICES[key].name}
+                    </div>
                     <div className="text-xs opacity-70">
                       {DEVICES[key].width} × {DEVICES[key].height}
                     </div>
@@ -325,7 +352,9 @@ export default function Home() {
             </div>
 
             <div className="bg-white/10 backdrop-blur-sm p-6 rounded-lg border border-white/20">
-              <h2 className="text-xl font-semibold mb-4 text-white">Upload Photo</h2>
+              <h2 className="text-xl font-semibold mb-4 text-white">
+                Upload Photo
+              </h2>
               <input
                 type="file"
                 accept="image/*"
@@ -352,7 +381,9 @@ export default function Home() {
                     >
                       −
                     </button>
-                    <span className="text-white">Zoom: {Math.round(imageScale * 100)}%</span>
+                    <span className="text-white">
+                      Zoom: {Math.round(imageScale * 100)}%
+                    </span>
                     <button
                       onClick={() => handleZoom(0.1)}
                       className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-500 font-bold text-xl"
@@ -466,13 +497,17 @@ export default function Home() {
             <h2 className="text-xl font-semibold mb-4 text-white">
               Preview ({DEVICES[selectedDevice].name})
             </h2>
-            <div 
+            <div
               ref={cropContainerRef}
               className="border-4 border-gray-600 rounded-[2rem] overflow-hidden bg-black relative mx-auto"
-              style={{ 
+              style={{
                 aspectRatio: `${deviceWidth} / ${deviceHeight}`,
                 maxHeight: "600px",
-                cursor: originalImage ? (isDragging ? "grabbing" : "grab") : "default",
+                cursor: originalImage
+                  ? isDragging
+                    ? "grabbing"
+                    : "grab"
+                  : "default",
                 touchAction: "none",
               }}
               onPointerDown={handlePointerDown}
